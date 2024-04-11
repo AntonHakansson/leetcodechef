@@ -1,0 +1,8 @@
+break b if N == 5
+  commands
+    silent
+    call pprint2D(len_, N, N)
+    p *dp@N
+    printf "\n"
+    c
+  end

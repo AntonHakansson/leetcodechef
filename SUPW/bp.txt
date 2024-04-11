@@ -1,0 +1,6 @@
+break main.c:123
+  commands
+    silent
+    p *dp@test.count
+    c
+  end
