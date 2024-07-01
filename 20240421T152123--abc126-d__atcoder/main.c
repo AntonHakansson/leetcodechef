@@ -3,12 +3,26 @@
 #+ref: https://atcoder.jp/contests/abc126/tasks/abc126_d
 #+author: anton@hakanssn.com
 #+licence: This is free and unencumbered software released into the public domain.
- */
 
-typedef unsigned char U8;
-typedef unsigned long long  U64;
+* Problem Statement
+
+We have a tree with =N= vertices numbered =1= to =N=.
+The =i=-th edge in the tree connects Vertex u_i and Vertex v_i, and its length is w_i.
+Your objective is to paint each vertex in the tree white or black (it is fine to paint all vertices the same color) so that the following condition is satisfied:
+
+- For any two vertices painted in the same color, the distance between them is an even number.
+
+Find a coloring of the vertices that satisfies the condition and print it.
+It can be proved that at least one such coloring exists under the constraints of this problem.
+
+*/
+
+typedef unsigned char      U8;
+typedef unsigned long long U64;
 typedef signed   long long I64;
-typedef signed   long long Size;
+typedef typeof(sizeof(0))           Uptr;
+typedef typeof((char *)0-(char *)0) Size;
+typedef typeof(sizeof(0))           USize;
 
 #define size_of(s)   (Size)sizeof(s)
 #define count_of(s)  (size_of((s)) / size_of(*(s)))
@@ -62,22 +76,19 @@ static void run(Arena arena, Write_Buffer * restrict reader, Write_Buffer * rest
 
     U8 *visited = new (&arena, U8, N);
     while (stack_count > 0) {
-      Frame_Stack *frame = &stack[stack_count--];
-      if (visited[frame->i] > 0) { continue; }
-      visited[frame->i] = 1;
-      if ((frame->w % 2) == 1) {
-        coloring[frame->i] = 1;
-      }
+      Frame_Stack frame = stack[stack_count--];
+      if (visited[frame.i] > 0) { continue; }
+      visited[frame.i] = 1;
+      if ((frame.w % 2) == 1) { coloring[frame.i] = 1; }
       for (Size n = 0; n < N; n++) {
-        I64 dist_to_neigh = adj(frame->i, n);
-        if (dist_to_neigh > 0) {
-          I64 dist_to_root = frame->w + dist_to_neigh;
+        I64 dist_to_neigh = adj(frame.i, n);
+        I64 dist_to_root  = frame.w + dist_to_neigh;
+        if ((visited[n] == 0) && (dist_to_neigh > 0)) {
           stack[stack_count++] = (Frame_Stack) { .i = n, .w = dist_to_root};
         }
       }
     }
   }
-
   for (Size i = 0; i < N; i++) {
     *(writer->at++) = coloring[i] + '0';
     *(writer->at++) = '\n';

@@ -1,31 +1,29 @@
 /*
-#+title:
-#+ref:
-#+author: anton@hakanssn.com
-#+licence: This is free and unencumbered software released into the public domain.
+  #+title: Codechef: Rectangle
+  #+ref:
+  #+author: anton@hakanssn.com
+  #+licence: This is free and unencumbered software released into the public domain.
+*/
 
- */
-
-#define HEAP_CAP     (1ll << 30)
-
-#include <stdint.h>
-#include <stddef.h>
-typedef uint8_t   U8;
-typedef int64_t   I64;
-typedef uint64_t  U64;
-typedef ptrdiff_t Size;
+typedef unsigned char      U8;
+typedef unsigned long long U64;
+typedef signed   int       I32;
+typedef signed   long long I64;
+typedef typeof((char *)0-(char *)0) Size;
+typedef typeof(sizeof(0))           USize;
+typedef I32 B32;
 
 #define size_of(s)   (Size)sizeof(s)
 #define count_of(s)  (size_of((s)) / size_of(*(s)))
-#define assert(c)    while((!(c))) __builtin_unreachable()
-#define new(a, t, n) (t *) arena_alloc(a, size_of(t), (Size)_Alignof(t), (n))
+#define assert(c)    while((!(c))) __builtin_trap()
+#define new(a, t, n) ((t *) arena_alloc(a, size_of(t), (Size)_Alignof(t), (n)))
 
 typedef struct { U8 *beg, *end; } Arena;
 typedef struct { Size cap; U8 *buf; U8 *at; } Stream;
 
 __attribute((malloc, alloc_size(2,4), alloc_align(3)))
 static U8 *arena_alloc(Arena *a, Size objsize, Size align, Size count) {
-  Size padding = -(uintptr_t)(a->beg) & (align - 1);
+  Size padding = -(U64)(a->beg) & (align - 1);
   Size total   = padding + objsize * count;
   assert(total < (a->end - a->beg) && "out of memory");
   U8 *p = a->beg + padding;
@@ -48,38 +46,50 @@ static void append_i64(Stream *io, I64 x, char separator) {
   do { *io->at++ = tmpbuf[i++]; } while (i < count_of(tmpbuf));
   *(io->at++) = separator;
 }
+static void append_buf(Stream *io, U8 *data, Size len, char separator) {
+  for (Size i = 0; i < len; i++) { *(io->at++) = data[i]; }
+  *(io->at++) = separator;
+}
+#define append_lit(io, lit, sep) append_buf((io), (lit), count_of((lit)) - 1, (sep))
 
-// Solution
-typedef struct {
-  I64 *items;
-  Size count;
-} Test;
-
+// Rectangle solution using occurance table
+// This solution allocates a lot of memory -- can we use a bloom filter instead?
 static void run(Arena arena, Stream * restrict reader, Stream * restrict writer) {
-  Test test = {0}; {
-    test.count = expect_i64(reader);
-    test.items = new(&arena, typeof(*test.items), test.count);
-    for (Size i = 0; i < test.count; i++)
-      test.items[i] = expect_i64(reader);
-  }
+  Size T = expect_i64(reader);
+  for (Size i = 0; i < T; i++) {
 
-  { // solve
-    I64 *dp = new(&arena, I64, test.count + 3) + 3; // dp[-3..test.count-1] safe
-    for (Size i = 0; i < test.count; i++) { }
-    I64 result = 0;
-    append_i64(writer, result, '\n');
+    static U8 map[10001];
+    Size A[4];
+    for (int i = 0; i < 4; i++) {
+      A[i] = expect_i64(reader);
+      map[A[i]] = 0;
+    }
+    for (int i = 0; i < 4; i++) {
+      map[A[i]]++;
+    }
+
+    B32 is_rect = 1;
+    for (int i = 0; i < 4; i++) {
+      if (map[A[i]] % 2) {
+        is_rect = 0;
+      }
+    }
+
+    append_lit(writer, is_rect ? "YES" : "NO", '\n');
   }
 }
 
 // Platform
+#define HEAP_CAP (1ll << 30)
 #include <stdlib.h>
 #include <stdio.h>
+
 int main(int argc, char **argv) {
   void *heap = malloc(HEAP_CAP);
   Arena arena = (Arena){heap, heap + HEAP_CAP};
   Stream reader = {0}; {
     reader.buf = reader.at = arena.beg;
-    reader.cap = fread(reader.buf, 1, (1ll << 24), stdin);
+    reader.buf[(reader.cap = fread(reader.buf, 1, (1ll << 23) - 1, stdin)) + 1] = '\0';
     arena.beg += reader.cap;
   }
   Stream writer = { .cap = 1ll << 13 }; {
