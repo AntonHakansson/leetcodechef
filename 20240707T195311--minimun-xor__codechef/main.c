@@ -17,7 +17,7 @@ typedef uint8_t U8; typedef int64_t I64; typedef uint64_t  U64; typedef ptrdiff_
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 
 typedef struct { U8 *beg, *end; } Arena;
-typedef struct { Size cap; U8 *buf; U8 *at; } Write_Buffer;
+typedef struct Stream { U8 *beg, *end, *at; void (*update)(struct Stream *); } Stream;
 
 __attribute((malloc, alloc_size(2,4), alloc_align(3)))
 static U8 *arena_alloc(Arena *a, Size objsize, Size align, Size count) {
@@ -29,31 +29,41 @@ static U8 *arena_alloc(Arena *a, Size objsize, Size align, Size count) {
   a->beg += total;
   return p;
 }
-static I64 expect_i64(Write_Buffer *io) {
+static Stream stream(Arena *arena, Size cap, void (*update_fn)(Stream *)) {
+  Stream r = { .update = update_fn };
+  r.beg = r.at = new(arena, U8, cap);
+  r.end = r.beg + cap;
+  return r;
+}
+static I64 read_i64(Stream *io) {
+  if (io->update && io->at + 256 >= io->end) { io->update(io); }
   U64 u = 0, s = 0;
   while(*io->at && *io->at <= 32) { ++io->at; }
-  if (*io->at == '-') { s = ~s; ++io->at; } else if (*io->at == '+') { ++io->at; }
-  while ((*io->at >= '0') && (*io->at <= '9')) { u = u*10 + (*(io->at++) - '0'); }
+  if     (*io->at == '-') { s = ~s; ++io->at; } else if (*io->at == '+') { ++io->at; }
+  while ((*io->at >= '0') && (*io->at <= '9')) { u = u * 10 + (*(io->at++) - '0'); }
+  assert(io->at < io->end);
   return (u^s) + !!s;
 }
-static void append_i64(Write_Buffer *io, I64 x, char separator) {
-  char tmpbuf[20];
+static void write_i64(Stream *io, I64 x, char separator) {
+  if (io->update && io->at + 256 >= io->end) { io->update(io); }
   if (x < 0) { *io->at++ = '-'; x = -x; }
+  char tmpbuf[20];
   int i = count_of(tmpbuf);
   do { tmpbuf[--i] = (x % 10) + '0'; } while (x /= 10);
   do { *io->at++ = tmpbuf[i++]; } while (i < count_of(tmpbuf));
   *(io->at++) = separator;
+  assert(io->at < io->end);
 }
 
-static void run(Arena arena, Write_Buffer *reader, Write_Buffer *writer) {
-  Size T = expect_i64(reader);
+static void run(Arena arena, Stream *reader, Stream *writer) {
+  Size T = read_i64(reader);
   for (Size t = 0; t < T; t++) {
+    Size N = read_i64(reader);
     Arena temp = arena;
-    Size N = expect_i64(reader);
     U64 *a = new(&temp, U64, N);
-    U64 totx = a[0] = expect_i64(reader);
+    U64 totx = a[0] = read_i64(reader);
     for (Size n = 1; n < N; n++) {
-      a[n] = expect_i64(reader);
+      a[n] = read_i64(reader);
       totx ^= a[n];
     }
     U64 r = totx;
@@ -61,36 +71,45 @@ static void run(Arena arena, Write_Buffer *reader, Write_Buffer *writer) {
       U64 drop_one = totx ^ a[n];
       r = min(r, drop_one);
     }
-    append_i64(writer, min(totx, r), '\n');
+    write_i64(writer, r, '\n');
   }
 }
 
 // Platform
 #define HEAP_CAP     (1ll << 30)
 
+#include <unistd.h>
+static void flush(Stream *s) {
+  assert(s->at >= s->beg);
+  Size nbytes = write(1, s->beg, s->at - s->beg);
+  s->at = s->beg;
+}
+static void fill(Stream *s) {
+  assert(s->end > s->at);
+  Size cap = s->end - s->beg;
+  Size unprocessed = (s->at == s->beg) ? 0 : (s->end - s->at);
+  __builtin_memmove(s->beg, s->at, unprocessed);
+  s->at = s->beg;
+  int nbytes = read(0, s->beg + unprocessed, cap - unprocessed);
+}
+
 #include <stdlib.h>
-#include <stdio.h>
 #ifndef ONLINE_JUDGE
 #  include "test.c"
 #else
 int main(int argc, char **argv) {
   void *heap = malloc(HEAP_CAP);
   Arena arena = (Arena){heap, heap + HEAP_CAP};
-  Write_Buffer reader = {0}; {
-    reader.buf = reader.at = arena.beg;
-    reader.cap = fread(reader.buf, 1, (1ll << 24), stdin);
-    arena.beg += reader.cap + 32;
-  }
-  Write_Buffer writer = { .cap = 1ll << 13 }; {
-    writer.buf = writer.at = new (&arena, U8, writer.cap);
-  }
+  Stream reader = stream(&arena, (1ll << 18), fill);
+  Stream writer = stream(&arena, (1ll << 18), flush);
+  fill(&reader);
   run(arena, &reader, &writer);
-  fwrite(writer.buf, 1, (writer.at - writer.buf), stdout);
+  flush(&writer);
   free(heap);
   return 0;
 }
 #endif // ONLINE_JUDGE
 
 /* Local Variables: */
-/* compile-command: "cc main.c -fsanitize=undefined,address -O3" */
+/* compile-command: "cc main.c -fsanitize=undefined -g3" */
 /* End: */
