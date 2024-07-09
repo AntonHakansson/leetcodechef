@@ -87,7 +87,11 @@ static void fill(Stream *s) {
 int main(int argc, char **argv) {
   void *heap = malloc(HEAP_CAP);
   Arena arena = (Arena){heap, heap + HEAP_CAP};
-
+  Stream reader = stream(&arena, (1ll << 18), fill);
+  Stream writer = stream(&arena, (1ll << 18), flush);
+  fill(&reader);
+  run(arena, &reader, &writer);
+  flush(&writer);
   free(heap);
   return 0;
 }
