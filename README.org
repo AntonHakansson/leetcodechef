@@ -1,4 +1,6 @@
-* Atcoder 1200+ problems
+#+startup: show2levels
+
+* Atcoder 1200-1599 problems
 :PROPERTIES:
 :EXPORT_OPTIONS: toc:nil
 :EXPORT_LATEX_HEADER_EXTRA: \usepackage[hmargin=2.5cm, vmargin=3cm, bindingoffset=0.5cm]{geometry} \parindent{0}
@@ -18667,7 +18669,7 @@ As there is only one vertical line, we cannot draw any horizontal lines. Thus, t
 Be sure to print the answer modulo \(1\ 000\ 000\ 007\).
 
 
-** Fetch problem :noexport:
+* Fetch problem                                                    :noexport:
 
 #+begin_src emacs-lisp
       (defun atcoder-problem-statement (url)
