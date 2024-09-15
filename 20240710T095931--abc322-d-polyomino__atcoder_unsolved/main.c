@@ -5,115 +5,94 @@
 #+licence: This is free and unencumbered software released into the public domain.
 */
 
-#define count_of(s)  (Size)(sizeof((s)) / sizeof(*(s)))
+#define countof(s)   (Size)(sizeof((s)) / sizeof(*(s)))
 #define assert(c)    while((!(c))) __builtin_unreachable()
 #define new(a, t, n) ((t *) arena_alloc(a, (Size)sizeof(t), (Size)_Alignof(t), (n)))
+#define s8(s)        (S8){(U8 *)s, countof(s)-1}
+#define for_range(it, beg, end) for (Size it = (beg); it < (end); it++)
 
 typedef unsigned char       U8;
-typedef unsigned long long  U64;
-typedef signed   long long  I64;
 typedef typeof((char *)0-(char *)0)  Size;
 typedef typeof((sizeof(0)))          USize;
 typedef struct { U8 *beg, *end; } Arena;
 typedef struct Stream { U8 *beg, *end, *at; void (*update)(struct Stream *); } Stream;
+typedef struct { U8 *data; Size len; } S8;
 
 static U8    *arena_alloc(Arena *a, Size objsize, Size align, Size count);
-static void   write_i64  (Stream *io, I64 x, char separator);
+static void   write_s8(Stream *io, S8 s, char separator);
 
 static void run(Arena arena, Stream *reader, Stream *writer) {
-#define STRIDE (4 + 1)
-#define P(k, row, col) (ps[k])[(((row) * STRIDE) + (col))]
-#define P_90(k, row, col) (ps[k])[(((row) * STRIDE) + (col))]
-#define P_180(k, row, col) (ps[k])[(((row) * STRIDE) + (col))]
-#define P_270(k, row, col) (ps[k])[(((row) * STRIDE) + (col))]
+  U8 ps[3][4][4] = {0};
+  for_range(k, 0, 3) {
+    for_range(row, 0, 4) {
+      for_range(col, 0, 4) { ps[k][row][col] = *reader->at++; }
+      while (*reader->at == '\n') reader->at++;
+    }
+  }
 
-  U8 *ps[3] = {0};
-  ps[0] = reader->at + 0 * STRIDE;
-  ps[1] = reader->at + 1 * STRIDE;
-  ps[2] = reader->at + 2 * STRIDE;
-  reader->at += 3 * STRIDE;
-  assert(reader->at <= reader->end);
+  _Bool dfs(U8 grid[4][4], Size k, Size drow, Size dcol) {
+    if (k == 3) {
+      _Bool filled = 1;
+      for_range(row, 0, 4) for_range(col, 0, 4) filled &= (grid[row][col] == '#');
+      return filled;
+    }
 
-  Size row_start[3], row_end[3], col_start[3], col_end[3];
-  {
-    Size total_occupied = 0;
-    __builtin_memset(row_start, 0x3f, sizeof(row_start));
-    __builtin_memset(col_start, 0x3f, sizeof(row_start));
-    for (Size k = 0; k < 3; k++) {
-      for (Size row = 0; row < 4; row++) {
-        for (Size col = 0; col < 4; col++) {
-          char c = P(k, row, col);
-          if (c == '#') {
-            total_occupied++;
-            if (total_occupied > (4 * 4)) {
-              write_i64(writer, 0, '\n');
-              return;
-            }
-            row_start[k] = row < row_start[k] ? row : row_start[k];
-            col_start[k] = col < col_start[k] ? col : col_start[k];
-            row_end[k] = row > row_end[k] ? row : row_end[k];
-            col_end[k] = col > col_end[k] ? col : col_end[k];
+    U8 grid_staging[4][4] = {0};
+    if (k >= 0) {
+      __builtin_memcpy(grid_staging, grid, sizeof(grid_staging));
+      for_range(row, 0, 4) {
+        for_range(col, 0, 4) {
+          _Bool t = ps[k][row][col] == '#';
+          if (!t) continue;
+
+          Size r = row + drow;
+          Size c = col + dcol;
+          if (r < 0 || r >= 4) {
+            // # out of bounds
+            return 0;
           }
+          if (c < 0 || c >= 4) {
+            // # out of bounds
+            return 0;
+          }
+          if (grid_staging[r][c] == '#') {
+            // collision
+            return 0;
+          }
+          grid_staging[r][c] = !!t * '#';
         }
       }
-      // one past last
-      row_end[k]++;
-      col_end[k]++;
     }
-  }
 
-  // we probably want to place the most constrained pieces first
-
-  // in orig. orientation:
-  // place horizontally 0..col_start[k]
-  // place vertically   0..row_start[k]
-
-
-  U8 grid[4][4] = {0};
-
-  void place(Size k, Size orientation) {
-    for (Size row_t = 0; row_t < 4; row_t++) {
-      for (Size col_t = 0; col_t < 4; col_t++) {
-
-        // place k's upper left corner at row_t, col_t
-        Size height = row_end[k] - row_start[k];
-        Size width  = col_end[k] - col_start[k];
-        if (row_t + height > 4) { continue; }
-        if (col_t + width  > 4) { continue; }
-
-        // valid to place k at row, col in empty grid.
-        // check for collision with already placed pieces.
-        U8 grid2[4][4] = {0};
-        __builtin_memcpy(grid2, grid, sizeof(grid));
-        for (Size prow = row_start[k]; prow < row_end[k]; prow++) {
-          for (Size pcol = col_start[k]; pcol < col_end[k]; pcol++) {
-            if (grid2[row_t][col_t] == '#') { };
-          }
-        }
-
-        // __builtin_memcpy(grid, grid2, sizeof(grid));
+    _Bool found = 0;
+    for_range(drow, -3, 3) {
+      for_range(dcol, -3, 3) {
+        found |= dfs(grid_staging, k + 1, drow, dcol);
       }
     }
+    return found;
   }
 
-  for (Size k = 0; k < 3; k++) {
-
-    for (Size row_t = 0; row_t < 4; row_t++) {
-      for (Size col_t = 0; col_t < 4; col_t++) {
-
-        // place k's upper left corner at row_t, col_t
-        Size row = row_t + row_start[k];
-        Size col = col_t + col_start[k];
-        Size height = row_end[k] - row_start[k];
-        Size width  = col_end[k] - col_start[k];
-        if (row + height > 4) { continue; }
-        if (col + width > 4)  { continue; }
-
-        // valid to place k at row, col in empty grid.
+  void rotate_CCW(U8 piece[4][4]) {
+    U8 staging[4][4] = {0};
+    for_range(row, 0, 4) {
+      for_range(col, 0, 4) {
+        staging[row][col] = piece[3 - col][row];
       }
     }
-
+    __builtin_memcpy(piece, staging, sizeof(staging));
   }
+
+  _Bool found = 0;
+  for_range(rot_b, 0, 4) {
+    for_range(rot_c, 0, 4) {
+      U8 grid[4][4] = {0};
+      found |= dfs(grid, -1, 0, 0);
+      rotate_CCW(ps[2]);
+    }
+    rotate_CCW(ps[1]);
+  }
+  write_s8(writer, found ? s8("Yes") : s8("No"),  '\n');
 }
 
 __attribute((malloc, alloc_size(2,4), alloc_align(3)))
@@ -126,24 +105,14 @@ static U8 *arena_alloc(Arena *a, Size objsize, Size align, Size count) {
   a->beg += total;
   return p;
 }
-static I64 read_i64(Stream *io) {
-  if (io->update && io->at + 256 >= io->end) { io->update(io); }
-  U64 u = 0, s = 0;
-  while(*io->at && *io->at <= 32) { ++io->at; }
-  if     (*io->at == '-') { s = ~s; ++io->at; } else if (*io->at == '+') { ++io->at; }
-  while ((*io->at >= '0') && (*io->at <= '9')) { u = u * 10 + (*(io->at++) - '0'); }
+static void write_bytes(Stream *io, U8 *bytes, Size len, char separator) {
+  if (io->update && io->at + len >= io->end) { io->update(io); }
+  while (len--) *(io->at++) = *(bytes++);
+  if (separator) { *(io->at++) = separator; }
   assert(io->at < io->end);
-  return (u^s) + !!s;
 }
-static void write_i64(Stream *io, I64 x, char separator) {
-  if (io->update && io->at + 256 >= io->end) { io->update(io); }
-  if (x < 0) { *io->at++ = '-'; x = -x; }
-  char tmpbuf[20];
-  int i = count_of(tmpbuf);
-  do { tmpbuf[--i] = (x % 10) + '0'; } while (x /= 10);
-  do { *io->at++ = tmpbuf[i++]; } while (i < count_of(tmpbuf));
-  *(io->at++) = separator;
-  assert(io->at < io->end);
+static void write_s8(Stream *io, S8 s, char separator) {
+  write_bytes(io, s.data, s.len, separator);
 }
 
 // Platform
@@ -178,7 +147,11 @@ static void fill(Stream *s) {
 int main(int argc, char **argv) {
   void *heap = malloc(HEAP_CAP);
   Arena arena = (Arena){heap, heap + HEAP_CAP};
-
+  Stream reader = stream(&arena, (1ll << 18), fill);
+  Stream writer = stream(&arena, (1ll << 18), flush);
+  fill(&reader);
+  run(arena, &reader, &writer);
+  flush(&writer);
   free(heap);
   return 0;
 }
