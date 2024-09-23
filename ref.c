@@ -87,13 +87,13 @@ static void run_dag_dfs(Arena arena, I64 *restrict nodes, I64 *restrict adj, Siz
 
   printf("preorder: ");
   for (Size i = 0; i < N; i++) {
-    printf("%ld ", preorder[i]);
+    printf("%lld ", preorder[i]);
   }
   printf("\n");
 
   printf("postorder: ");
   for (Size i = 0; i < N; i++) {
-    printf("%ld ", postorder[i]);
+    printf("%lld ", postorder[i]);
   }
   printf("\n");
 }
@@ -137,13 +137,13 @@ static void run_graph_dfs(Arena arena, I64 *restrict nodes, I64 *restrict adj, S
 
   printf("preorder: ");
   for (Size i = 0; i < N; i++) {
-    printf("%ld ", preorder[i]);
+    printf("%lld ", preorder[i]);
   }
   printf("\n");
 
   printf("postorder: ");
   for (Size i = 0; i < N; i++) {
-    printf("%ld ", postorder[i]);
+    printf("%lld ", postorder[i]);
   }
   printf("\n");
 }

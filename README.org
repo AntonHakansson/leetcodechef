@@ -17160,7 +17160,8 @@ We may not be able to produce an integer satisfying the condition.
 #+end_example
 
 
-** [[https://atcoder.jp/contests/abc134/tasks/abc134_e][E - Sequence Decomposing]]
+** DONE [[https://atcoder.jp/contests/abc134/tasks/abc134_e][E - Sequence Decomposing]]
+CLOSED: [2024-09-23 Mon 19:22]
 
 Score : \(500\) points
 
