@@ -52,16 +52,17 @@ static void run(Arena arena, Stream *reader, Stream *writer) {
   // O(N log N)
   // Count number of increasing subsequences
 #if 1
+  // Sorted list of longest subsequence's largest value
   U64 *set = new(&arena, U64, T);
   Size set_count = 0;
   set[set_count++] = a[0];
   for (Size i = 1; i < T; i++) {
-    Size lb = set_count;
-    { // lb = lower_bound(set, a[i])
+    Size lb = 0; { // lb = lower_bound(set, a[i])
+      lb = set_count;
       Size l = 0, r = set_count - 1;
       while (l <= r) {
         Size m = l + (r - l) / 2;
-        if (a[i] <= set[m]) { lb = m; r = m - 1; }
+        if (a[i] <= set[m]) { r = m - 1; lb = m; }
         else                { l = m + 1; }
       }
     }

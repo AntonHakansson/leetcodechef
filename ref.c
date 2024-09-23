@@ -178,6 +178,18 @@ static void run_dfs(Arena arena)
   }
 }
 
+// Lower Bound
+static Size lower_bound(I64 *sorted_list, Size n, I64 bound) {
+  Size lb = n;
+  Size l = 0, r = n - 1;
+  while (l <= r) {
+    Size m = l + (r - l) / 2;
+    if (bound <= sorted_list[m]) { r = m - 1; lb = m; }
+    else                         { l = m + 1; }
+  }
+  return lb;
+}
+
 // Union Segment
 static Size union_find(I64 *parent, Size i) {
   while (i != parent[i]) {
