@@ -38,28 +38,28 @@ static void run(Arena arena, Stream *reader, Stream *writer) {
       Size choices = W - 1;
       for (Size placements = 0; placements < (1ll << choices); placements++) {
         _Bool ok = 1;
-        for (Size l = 0; l < choices - 1; l++) {
-          _Bool left = (placements >> (l + 0)) & 1;
-          _Bool right = (placements >> (l + 1)) & 1;
+        for (Size l = 1; l < choices; l++) {
+          _Bool left  = (placements >> (l - 1)) & 1;
+          _Bool right = (placements >> (l - 0)) & 1;
           if (left && right) {
             ok = 0;
+            break;
           }
         }
         if (ok) {
-          I64 dpij = dp(i, j);
           // Go left
           if (j > 0 && ((placements >> (j - 1)) & 1)) {
-            dp(i + 1, j - 1) += dpij;
+            dp(i + 1, j - 1) += dp(i, j);
             dp(i + 1, j - 1) %= MOD;
           }
           // Go right
           else if (j < choices && ((placements >> (j - 0)) & 1)) {
-            dp(i + 1, j + 1) += dpij;
+            dp(i + 1, j + 1) += dp(i, j);
             dp(i + 1, j + 1) %= MOD;
           }
           // Go straight
           else {
-            dp(i + 1, j) += dpij;
+            dp(i + 1, j) += dp(i, j);
             dp(i + 1, j) %= MOD;
           }
         }
@@ -123,9 +123,7 @@ static void fill(Stream *s) {
   int nbytes = read(0, s->beg + unprocessed, cap - unprocessed);
 }
 
-#ifndef ONLINE_JUDGE
-#  include "test.c"
-#else
+#ifdef ONLINE_JUDGE
 int main(int argc, char **argv) {
   enum { HEAP_CAP = (1ll << 30) };
   void *heap = malloc(HEAP_CAP);

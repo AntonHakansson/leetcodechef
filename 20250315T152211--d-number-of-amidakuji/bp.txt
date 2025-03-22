@@ -1,6 +1,0 @@
-break b
-  commands
-    silent
-    p *dp@test.count
-    c
-  end
