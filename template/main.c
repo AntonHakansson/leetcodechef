@@ -58,11 +58,8 @@ static void write_i64(Stream *io, I64 x, char separator) {
   assert(io->at < io->end);
 }
 
-// Platform
 #include <unistd.h>
 #include <stdlib.h>
-
-
 static Stream stream(Arena *arena, Size cap, void (*update_fn)(Stream *)) {
   Stream r = { .update = update_fn };
   r.beg = r.at = new(arena, U8, cap);
@@ -72,21 +69,18 @@ static Stream stream(Arena *arena, Size cap, void (*update_fn)(Stream *)) {
 static void flush(Stream *s) {
   assert(s->at >= s->beg);
   Size nbytes = write(1, s->beg, s->at - s->beg);
-  assert(nbytes == (s->at - s->beg));
   s->at = s->beg;
 }
 static void fill(Stream *s) {
   assert(s->end > s->at);
   Size cap = s->end - s->beg;
   Size unprocessed = (s->at == s->beg) ? 0 : (s->end - s->at);
-  s->at = __builtin_memmove(s->beg, s->at, unprocessed);
-  I64 nbytes = read(0, s->beg + unprocessed, cap - unprocessed);
-  assert(nbytes == (cap - unprocessed));
+  s->at = s->beg = __builtin_memmove(s->beg, s->at, unprocessed);
+  int nbytes = read(0, s->beg + unprocessed, cap - unprocessed);
 }
-
 #ifdef ONLINE_JUDGE
 int main(int argc, char **argv) {
-  enum { HEAP_CAP = 1ll << 30 };
+  enum { HEAP_CAP = (1ll << 30) };
   void *heap = malloc(HEAP_CAP);
   Arena arena = (Arena){heap, heap + HEAP_CAP};
   Stream reader = stream(&arena, (1ll << 18), fill);
@@ -94,6 +88,7 @@ int main(int argc, char **argv) {
   fill(&reader);
   run(arena, &reader, &writer);
   flush(&writer);
+  free(heap);
   return 0;
 }
 #endif // ONLINE_JUDGE
