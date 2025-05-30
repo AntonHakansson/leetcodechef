@@ -18349,27 +18349,38 @@ There are two shrines and three temples. The shrines are located at distances of
 The road is quite long, and we may need to travel a distance that does not fit into a \(32\)-bit integer.
 
 
-** [[https://atcoder.jp/contests/abc117/tasks/abc117_d][D - XXOR]]
+** DONE [[https://atcoder.jp/contests/abc117/tasks/abc117_d][D - XXOR]]
+CLOSED: [2025-05-31 Sat 00:36]
+:LOGBOOK:
+CLOCK: [2025-05-25 Sun 16:50]--[2025-05-25 Sun 21:40] =>  4:50
+:END:
 
 Score : \(400\) points
 
 *** Problem Statement
 
-You are given \(N\) non-negative integers \(A_1, A_2, ..., A_N\) and another non-negative integer \(K\).
+You are given \(N\) non-negative integers \(A_1, A_2, ..., A_N\) and
+another non-negative integer \(K\).
 
-For a integer \(X\) between \(0\) and \(K\) (inclusive), let \(f(X) = (X\) XOR \(A_1)\) \(+\) \((X\) XOR \(A_2)\) \(+\) \(...\) \(+\) \((X\) XOR \(A_N)\).
+For a integer \(X\) between \(0\) and \(K\) (inclusive), let \(f(X) = (X\) XOR \(A_1)\) + \((X\) XOR \(A_2)\) \(+\) \(...\) \(+\) \((X\) XOR \(A_N)\).
 
-Here, for non-negative integers \(a\) and \(b\), \(a\) XOR \(b\) denotes the bitwise exclusive OR of \(a\) and \(b\).
+Here, for non-negative integers \(a\) and \(b\), \(a\) XOR \(b\)
+denotes the bitwise exclusive OR of \(a\) and \(b\).
 
 Find the maximum value of \(f\).
 
 What is XOR?
 
-The bitwise exclusive OR of \(a\) and \(b\), \(X\), is defined as follows:
+The bitwise exclusive OR of \(a\) and \(b\), \(X\), is defined as
+follows:
 
-- When \(X\) is written in base two, the digit in the \(2^k\)'s place (\(k \geq 0\)) is \(1\) if, when written in base two, exactly one of \(A\) and \(B\) has \(1\) in the \(2^k\)'s place, and \(0\) otherwise.
+- When \(X\) is written in base two, the digit in the \(2^k\)'s place
+  (\(k \geq 0\)) is \(1\) if, when written in base two, exactly one of
+  \(A\) and \(B\) has \(1\) in the \(2^k\)'s place, and \(0\)
+  otherwise.
 
-For example, \(3\) XOR \(5 = 6\). (When written in base two: \(011\) XOR \(101 = 110\).)
+For example, \(3\) XOR \(5 = 6\). (When written in base two: \(011\)
+XOR \(101 = 110\).)
 
 *** Constraints
 
