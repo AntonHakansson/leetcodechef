@@ -1,94 +1,132 @@
-/*
-#+title:
-#+ref:
-#+author: anton@hakanssn.com
-#+licence: This is free and unencumbered software released into the public
-domain.
-*/
+#if IN_SHELL /* $ bash main.c
+cc main.c -fsanitize=undefined -g3 -O0 -Wall -Wextra -Wconversion -Wno-sign-conversion $@
+exit # */
+#endif
 
-#define countof(s)    (Size)(sizeof((s)) / sizeof(*(s)))
 #define assert(c)     while((!(c))) __builtin_trap()
 #define breakpoint(c) ((c) ? ({ asm volatile ("int3; nop"); }) : 0)
-#define new(a, t, n)  ((t *) arena_alloc(a, (Size)sizeof(t), (Size)_Alignof(t), (n)))
+#define new(a, t, n)  ((t *) arena_alloc(a, (Iz)sizeof(t), (Iz)_Alignof(t), (n)))
+#define countof(s)    (Iz)(sizeof((s)) / sizeof(*(s)))
 
 typedef unsigned char       U8;
 typedef unsigned long long  U64;
 typedef signed   long long  I64;
-typedef typeof((char *)0-(char *)0)  Size;
-typedef typeof((sizeof(0)))          USize;
+typedef typeof((char *)0-(char *)0)  Iz;
+typedef typeof((sizeof(0)))          Uz;
+
 typedef struct { U8 *beg, *end; } Arena;
-typedef struct Stream { U8 *beg, *end, *at; void (*update)(struct Stream *); } Stream;
+static U8 *arena_alloc(Arena *a, Iz objsize, Iz align, Iz count);
 
-static U8    *arena_alloc(Arena *a, Size objsize, Size align, Size count);
-static I64    read_i64   (Stream *io);
-static void   write_i64  (Stream *io, I64 x, char separator);
+#include <stdio.h>
+#define putchar putchar_unlocked
+static I64 nextlong(void);
+static U8 *nextstr(Arena *arena, Iz *out_len);
 
-static void run(Arena arena, Stream *reader, Stream *writer) {
-  Size T = read_i64(reader);
-  write_i64(writer, T, '\n');
+void run(Arena *arena) {
+  I64 N = nextlong();
 }
 
-__attribute((malloc, alloc_size(2,4), alloc_align(3)))
-static U8 *arena_alloc(Arena *a, Size objsize, Size align, Size count) {
-  Size padding = -(USize)(a->beg) & (align - 1);
-  Size total   = padding + objsize * count;
-  assert(total < (a->end - a->beg) && "out of memory");
-  U8 *p = a->beg + padding;
-  __builtin_memset(p, 0, objsize * count);
-  a->beg += total;
-  return p;
-}
-static I64 read_i64(Stream *io) {
-  if (io->update && io->at + 256 >= io->end) { io->update(io); }
-  U64 u = 0, s = 0;
-  while(*io->at && *io->at <= 32) { ++io->at; }
-  if     (*io->at == '-') { s = ~s; ++io->at; } else if (*io->at == '+') { ++io->at; }
-  while ((*io->at >= '0') && (*io->at <= '9')) { u = u * 10 + (*(io->at++) - '0'); }
-  assert(io->at < io->end);
-  return (u^s) + !!s;
-}
-static void write_i64(Stream *io, I64 x, char separator) {
-  if (io->update && io->at + 256 >= io->end) { io->update(io); }
-  if (x < 0) { *io->at++ = '-'; x = -x; }
-  char tmpbuf[20];
-  int i = countof(tmpbuf);
-  do { tmpbuf[--i] = (char)(x % 10) + '0'; } while (x /= 10);
-  do { *io->at++ = tmpbuf[i++]; } while (i < countof(tmpbuf));
-  *(io->at++) = separator;
-  assert(io->at < io->end);
-}
-
-#include <unistd.h>
 #include <stdlib.h>
-static Stream stream(Arena *arena, Size cap, void (*update_fn)(Stream *)) {
-  Stream r = { .update = update_fn };
-  r.beg = r.at = new(arena, U8, cap);
-  r.end = r.beg + cap;
-  return r;
-}
-static void flush(Stream *s) {
-  assert(s->at >= s->beg);
-  Size nbytes = write(1, s->beg, s->at - s->beg);
-  s->at = s->beg;
-}
-static void fill(Stream *s) {
-  assert(s->end > s->at);
-  Size cap = s->end - s->beg;
-  Size unprocessed = (s->at == s->beg) ? 0 : (s->end - s->at);
-  s->at = s->beg = __builtin_memmove(s->beg, s->at, unprocessed);
-  int nbytes = read(0, s->beg + unprocessed, cap - unprocessed);
-}
 #ifdef ONLINE_JUDGE
-int main(int argc, char **argv) {
-  enum { HEAP_CAP = (1ll << 30) };
-  void *heap = malloc(HEAP_CAP);
-  Arena arena = (Arena){heap, heap + HEAP_CAP};
-  Stream reader = stream(&arena, (1ll << 18), fill);
-  Stream writer = stream(&arena, (1ll << 18), flush);
-  fill(&reader);
-  run(arena, &reader, &writer);
-  flush(&writer);
-  free(heap);
+int main() {
+  enum { HEAP_CAP = 1 << 28, };
+  Arena arena[1] = { { .beg = malloc(HEAP_CAP), .end = arena->beg + HEAP_CAP, } };
+  run(arena);
   return 0;
 }
-#endif // ONLINE_JUDGE
+#else
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <fcntl.h>
+int main() {
+  enum { HEAP_CAP = 1 << 28, };
+  Arena arena[1] = { { .beg = malloc(HEAP_CAP), .end = arena->beg + HEAP_CAP, } };
+  Arena arena_rewind = *arena;
+
+  int input_pipe[2], output_pipe[2];
+  assert(pipe(input_pipe) == 0 && pipe(output_pipe) == 0);
+  dup2(input_pipe[0], STDIN_FILENO);
+  dup2(output_pipe[1], STDOUT_FILENO);
+
+  struct {
+    char *input;
+    char *expected;
+  } tests[] = {
+    {
+      .input = "",
+      .expected = "",
+    },
+    {
+      .input = "",
+      .expected = "",
+    },
+  };
+
+  for (Iz test_i = 0; test_i < 1; test_i++) {
+    *arena = arena_rewind;
+
+    write(input_pipe[1], tests[test_i].input, strlen(tests[test_i].input));
+    close(input_pipe[1]);
+      run(arena);
+    close(output_pipe[1]);
+    fflush(NULL);
+
+    char buf[4096] = {0};
+    Iz l = read(output_pipe[0], buf, sizeof(buf) - 1);
+    buf[l] = 0;
+
+    if (__builtin_strcmp(tests[test_i].expected, buf) != 0) {
+      fprintf(stderr, "==Failed case %ld==\n%sExpected: %s\nGot: %s",
+              test_i, tests[test_i].input, tests[test_i].expected, buf);
+    }
+    close(input_pipe[0]);
+    assert(pipe(input_pipe) == 0);
+    dup2(input_pipe[0], STDIN_FILENO);
+    close(output_pipe[0]);
+    assert(pipe(output_pipe) == 0);
+    dup2(output_pipe[1], STDOUT_FILENO);
+  }
+
+  return 0;
+}
+#endif
+
+static U8 *arena_alloc(Arena *a, Iz objsize, Iz align, Iz count) {
+  a->beg += -(Uz)(a->beg) & (align - 1); // align
+  U8 *p = __builtin_memset(a->beg, 0, objsize * count);
+  a->beg += objsize * count;
+  return p;
+}
+
+static I64 nextlong(void) {
+  char c = (char)getchar_unlocked();
+  while (c != '-' && (c < '0' || '9' < c)) c = (char)getchar_unlocked();
+  int s = 0;
+  if (c == '-') {
+    s = 1;
+    c = (char)getchar_unlocked();
+  }
+  I64 x = 0;
+  while ('0' <= c && c <= '9') {
+    x = x * 10 + c - '0';
+    c = (char)getchar_unlocked();
+  }
+  return s ? -x : x;
+}
+
+static U8 *nextstr(Arena *arena, Iz *out_len) {
+  int c = getchar_unlocked();
+  while (c == ' ' || c == '\n') c = getchar_unlocked();
+  Iz len = 0;
+  while (c != ' ' && c != '\n' && c != EOF) {
+    *(arena->beg)++ = (char)c;
+    len++;
+    c = getchar_unlocked();
+  }
+  *(arena->beg)++ = '\0';
+  if (out_len) {
+    *out_len = len;
+  }
+  return arena->beg - 1 - len;
+}
