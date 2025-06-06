@@ -18133,7 +18133,8 @@ For example, when the first to third bridges have collapsed, the inconvenience i
 #+end_example
 
 
-** [[https://atcoder.jp/contests/abc119/tasks/abc119_c][C - Synthetic Kadomatsu]]
+** DONE [[https://atcoder.jp/contests/abc119/tasks/abc119_c][C - Synthetic Kadomatsu]]
+CLOSED: [2025-06-06 Fri 09:39]
 
 Score : \(300\) points
 
@@ -18147,7 +18148,7 @@ Your objective is to use some of these bamboos (possibly all) to obtain three ba
 - Shortening Magic: Consumes \(1\) MP. Choose one bamboo of length at least \(2\) and decrease its length by \(1\).
 - Composition Magic: Consumes \(10\) MP. Choose two bamboos and combine them into one bamboo. The length of this new bamboo is equal to the sum of the lengths of the two bamboos combined. (Afterwards, further magics can be used on this bamboo.)
 
-At least how much MP is needed to achieve the objective?
+at least how much MP is needed to achieve the objective?
 
 *** Constraints
 
@@ -18247,7 +18248,8 @@ If we already have all bamboos of the desired lengths, the amount of MP needed i
 #+end_example
 
 
-** [[https://atcoder.jp/contests/abc119/tasks/abc119_d][D - Lazy Faith]]
+** DONE [[https://atcoder.jp/contests/abc119/tasks/abc119_d][D - Lazy Faith]]
+CLOSED: [2025-06-02 Mon 20:21]
 
 Score : \(400\) points
 
