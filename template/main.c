@@ -63,7 +63,7 @@ int main() {
     },
   };
 
-  for (Iz test_i = 0; test_i < 1; test_i++) {
+  for (Iz test_i = 0; test_i < countof(tests); test_i++) {
     *arena = arena_rewind;
 
     write(input_pipe[1], tests[test_i].input, strlen(tests[test_i].input));
