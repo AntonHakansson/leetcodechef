@@ -17993,8 +17993,6 @@ Print the number of strings of length \(N\) that satisfy the following condition
 
 There are \(4^3 = 64\) strings of length \(3\) that do not contain characters other than =A=, =C=, =G= and =T=. Among them, only =AGC=, =ACG= and =GAC= violate the condition, so the answer is \(64 - 3 = 61\).
 
---------------
-
 *** Sample Input 2
 
 #+begin_example
@@ -18024,7 +18022,8 @@ There are \(4^3 = 64\) strings of length \(3\) that do not contain characters ot
 Be sure to print the number of strings modulo \(10^9+7\).
 
 
-** [[https://atcoder.jp/contests/abc120/tasks/abc120_d][D - Decayed Bridges]]
+** DONE [[https://atcoder.jp/contests/abc120/tasks/abc120_d][D - Decayed Bridges]]
+CLOSED: [2025-06-20 Fri 08:59]
 
 Score : \(400\) points
 
